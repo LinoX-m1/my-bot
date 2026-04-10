@@ -7,7 +7,7 @@ from threading import Thread
 
 # --- SOZLAMALAR ---
 # Telegramdan olgan tokenni shu yerga qo'ying
-TOKEN = "BU_YERGA_TOKENNI_QO'YING"
+TOKEN = "8770000703:AAEXRnIxr8iRBu_eUP9f3GPi8yBID6oTEmw"
 bot = telebot.TeleBot(TOKEN)
 app = Flask('')
 
