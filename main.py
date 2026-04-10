@@ -6,7 +6,8 @@ from flask import Flask
 from threading import Thread
 
 # --- SOZLAMALAR ---
-TOKEN = "8770000703:AAEXRnIxr8iRBu_eUP9f3GPi8yBID6oTEmw" # O'z tokeningizni qo'ying!
+TOKEN = "8770000703:AAEXRnIxr8iRBu_eUP9f3GPi8yBID6oTEmw"
+ADMIN_ID = 7818670765 
 bot = telebot.TeleBot(TOKEN)
 app = Flask('')
 
@@ -19,7 +20,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-# --- MAXIMAL PERSONAJLAR RO'YXATI (60+) ---
+# --- TO'LIQ PERSONAJLAR RO'YXATI ---
 CARDS_DATA = {
     "Naruto": [
         {"name": "Naruto Uzumaki", "star": 1, "img": "https://i.pinimg.com/564x/01/23/45/naruto.jpg"},
@@ -65,20 +66,18 @@ CARDS_DATA = {
         {"name": "Levi Ackerman", "star": 3, "img": "https://i.pinimg.com/564x/01/23/45/levi.jpg"},
         {"name": "Erwin Smith", "star": 3, "img": "https://i.pinimg.com/564x/01/23/45/erwin.jpg"},
         {"name": "Hange Zoe", "star": 3, "img": "https://i.pinimg.com/564x/01/23/45/hange.jpg"},
-        {"name": "Reiner (Armored Titan)", "star": 4, "img": "https://i.pinimg.com/564x/01/23/45/reiner.jpg"},
-        {"name": "Bertholdt (Colossal)", "star": 4, "img": "https://i.pinimg.com/564x/01/23/45/berth.jpg"},
-        {"name": "Zeke (Beast Titan)", "star": 4, "img": "https://i.pinimg.com/564x/01/23/45/zeke.jpg"},
-        {"name": "Eren Founding Titan", "star": 5, "img": "https://i.pinimg.com/564x/01/23/45/eren5.jpg"},
+        {"name": "Reiner Titan", "star": 4, "img": "https://i.pinimg.com/564x/01/23/45/reiner.jpg"},
+        {"name": "Bertholdt Titan", "star": 4, "img": "https://i.pinimg.com/564x/01/23/45/berth.jpg"},
+        {"name": "Zeke Titan", "star": 4, "img": "https://i.pinimg.com/564x/01/23/45/zeke.jpg"},
+        {"name": "Eren Founding", "star": 5, "img": "https://i.pinimg.com/564x/01/23/45/eren5.jpg"},
         {"name": "Ymir Fritz", "star": 5, "img": "https://i.pinimg.com/564x/01/23/45/ymir.jpg"}
     ],
     "Dragon Ball": [
         {"name": "Goku", "star": 1, "img": "https://i.pinimg.com/564x/01/23/45/goku.jpg"},
         {"name": "Krillin", "star": 1, "img": "https://i.pinimg.com/564x/01/23/45/krillin.jpg"},
-        {"name": "Yamcha", "star": 1, "img": "https://i.pinimg.com/564x/01/23/45/yamcha.jpg"},
         {"name": "Vegeta", "star": 2, "img": "https://i.pinimg.com/564x/01/23/45/vegeta.jpg"},
         {"name": "Gohan", "star": 2, "img": "https://i.pinimg.com/564x/01/23/45/gohan.jpg"},
         {"name": "Piccolo", "star": 2, "img": "https://i.pinimg.com/564x/01/23/45/piccolo.jpg"},
-        {"name": "Future Trunks", "star": 3, "img": "https://i.pinimg.com/564x/01/23/45/trunks.jpg"},
         {"name": "Frieza", "star": 3, "img": "https://i.pinimg.com/564x/01/23/45/frieza.jpg"},
         {"name": "Cell", "star": 3, "img": "https://i.pinimg.com/564x/01/23/45/cell.jpg"},
         {"name": "Goku Black", "star": 4, "img": "https://i.pinimg.com/564x/01/23/45/gblack.jpg"},
@@ -86,7 +85,7 @@ CARDS_DATA = {
         {"name": "Beerus", "star": 4, "img": "https://i.pinimg.com/564x/01/23/45/beerus.jpg"},
         {"name": "UI Goku", "star": 5, "img": "https://i.pinimg.com/564x/01/23/45/uigoku.jpg"},
         {"name": "Zeno", "star": 5, "img": "https://i.pinimg.com/564x/01/23/45/zeno.jpg"},
-        {"name": "Broly (Super)", "star": 5, "img": "https://i.pinimg.com/564x/01/23/45/broly.jpg"}
+        {"name": "Broly", "star": 5, "img": "https://i.pinimg.com/564x/01/23/45/broly.jpg"}
     ]
 }
 
@@ -98,7 +97,6 @@ def get_user(user_id):
     conn.close()
     return user
 
-# --- TUGMALAR ---
 def main_markup():
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("🎴 Karta olish", "🎒 Kartalarim")
@@ -114,9 +112,15 @@ def start(message):
         cursor.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)", (message.from_user.id, None, "", 0, 0, 10))
         conn.commit()
         conn.close()
+        try:
+            bot.send_message(ADMIN_ID, f"🆕 Yangi foydalanuvchi!\nIsm: {message.from_user.first_name}\nID: {message.from_user.id}")
+        except: pass
         send_anime_choice(message)
     else:
-        bot.send_message(message.chat.id, "Bosh menyu:", reply_markup=main_markup())
+        if user[1] is None:
+            send_anime_choice(message)
+        else:
+            bot.send_message(message.chat.id, "Xush kelibsiz!", reply_markup=main_markup())
 
 def send_anime_choice(message):
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
@@ -137,67 +141,43 @@ def set_anime(message):
 def get_card(message):
     user_id = message.from_user.id
     user = get_user(user_id)
-    
-    # Foydalanuvchi bazada bo'lmasa yoki anime tanlamagan bo'lsa
-    if not user or user[1] is None:
-        # Agar bazada umuman bo'lmasa, yangi ochamiz
-        if not user:
-            conn = sqlite3.connect('game.db', check_same_thread=False)
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)", (user_id, None, "", 0, 0, 10))
-            conn.commit()
-            conn.close()
-        return send_anime_choice(message)
+    if not user or user[1] is None: return send_anime_choice(message)
 
     current_time = int(time.time())
-    last_get = user[4]
-    chances = user[5]
+    if user[5] <= 0:
+        if current_time - user[4] < 40:
+            vaqt = 40 - (current_time - user[4])
+            return bot.send_message(message.chat.id, f"⌛ Yana {vaqt} sekund kuting.")
+        else: chances = 1
+    else: chances = user[5]
 
-    # Vaqtni tekshirish (faqat imkoniyat 0 bo'lsa)
-    if chances <= 0:
-        if current_time - last_get < 10800:
-            mins = (10800 - (current_time - last_get)) // 60
-            return bot.send_message(message.chat.id, f"⌛ Hozircha imkoniyat yo'q. Yana {mins} daqiqa kuting yoki /craft qiling.")
-        else:
-            # Vaqt o'tgan bo'lsa, 1 ta imkoniyat beramiz
-            chances = 1
-
-    # Tasodifiy karta tanlash
     r = random.randint(1, 100)
     star = 5 if r <= 5 else 4 if r <= 15 else 3 if r <= 35 else 2 if r <= 65 else 1
-    
     selected_anime = user[1]
     anime_cards = [c for c in CARDS_DATA[selected_anime] if c['star'] == star]
-    
-    if not anime_cards:
-        anime_cards = CARDS_DATA[selected_anime]
-    
+    if not anime_cards: anime_cards = CARDS_DATA[selected_anime]
     card = random.choice(anime_cards)
     
-    # Ma'lumotlarni yangilash
     conn = sqlite3.connect('game.db', check_same_thread=False)
     cursor = conn.cursor()
-    
     new_items = user[3]
-    caption = f"✨ **YANGI KARTA!**\n\n👤 Ism: {card['name']}\n⭐ Daraja: {star}\n💎 Predmetlar: {new_items}"
-    
+    txt = ""
     if card['name'] in user[2]:
         p = star + 1
         new_items += p
-        caption += f"\n\n♻️ Dublikat! Sizga +{p} 💎 berildi."
+        txt = f"\n\n♻️ Dublikat! +{p} 💎 berildi."
     
     new_cards = user[2] + f"{card['name']},"
     new_chances = max(0, chances - 1)
+    caption = f"✨ **YANGI KARTA!**\n\n👤 Ism: {card['name']}\n⭐ Daraja: {star}\n💎 Predmetlar: {new_items}{txt}"
     
     cursor.execute("UPDATE users SET cards=?, items=?, last_get=?, chances=? WHERE id=?", 
                    (new_cards, new_items, current_time, new_chances, user_id))
     conn.commit()
     conn.close()
+    try: bot.send_photo(message.chat.id, card['img'], caption=caption, parse_mode="Markdown")
+    except: bot.send_message(message.chat.id, caption)
 
-    try:
-        bot.send_photo(message.chat.id, card['img'], caption=caption, parse_mode="Markdown")
-    except:
-        bot.send_message(message.chat.id, caption)
 @bot.message_handler(func=lambda m: m.text == "🎒 Kartalarim")
 def my_cards(message):
     user = get_user(message.from_user.id)
@@ -208,7 +188,7 @@ def my_cards(message):
 @bot.message_handler(func=lambda m: m.text == "🛠 Menyusi")
 def menu(message):
     user = get_user(message.from_user.id)
-    text = f"⚙️ **STATISTIKA**\n\n💎 Predmetlar: {user[3]}\n🎟 Imkoniyatlar: {user[5]}\n\n10 💎 evaziga 🎟 olish uchun /craft deb yozing."
+    text = f"⚙️ **STATISTIKA**\n\n💎 Predmetlar: {user[3]}\n🎟 Imkoniyatlar: {user[5]}\n\n10 💎 evaziga 🎟 olish uchun /craft yozing."
     bot.send_message(message.chat.id, text, parse_mode="Markdown")
 
 @bot.message_handler(commands=['craft'])
@@ -220,11 +200,21 @@ def craft(message):
         cursor.execute("UPDATE users SET items=items-10, chances=chances+1 WHERE id=?", (message.from_user.id,))
         conn.commit()
         conn.close()
-        bot.send_message(message.chat.id, "✅ Tayyor! 1 ta imkoniyat qo'shildi.")
-    else: bot.send_message(message.chat.id, "❌ Predmet yetarli emas.")
+        bot.send_message(message.chat.id, "✅ Tayyor! +1 imkoniyat.")
+    else: bot.send_message(message.chat.id, "❌ 💎 yetarli emas.")
 
 @bot.message_handler(func=lambda m: m.text == "🔄 Anime almashtirish")
 def change_anime(message): send_anime_choice(message)
+
+@bot.message_handler(commands=['stat'])
+def admin_stat(message):
+    if message.from_user.id == ADMIN_ID:
+        conn = sqlite3.connect('game.db', check_same_thread=False)
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM users")
+        total = cursor.fetchone()[0]
+        conn.close()
+        bot.send_message(message.chat.id, f"📊 Jami foydalanuvchilar: {total}")
 
 @app.route('/')
 def home(): return "Bot Live"
