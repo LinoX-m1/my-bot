@@ -135,37 +135,62 @@ def set_anime(message):
 
 @bot.message_handler(func=lambda m: m.text == "🎴 Karta olish")
 def get_card(message):
-    user = get_user(message.from_user.id)
-    if not user or not user[1]: return send_anime_choice(message)
+    user_id = message.from_user.id
+    user = get_user(user_id)
+    
+    # Foydalanuvchi bazada bo'lmasa yoki anime tanlamagan bo'lsa
+    if not user or user[1] is None:
+        # Agar bazada umuman bo'lmasa, yangi ochamiz
+        if not user:
+            conn = sqlite3.connect('game.db', check_same_thread=False)
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)", (user_id, None, "", 0, 0, 10))
+            conn.commit()
+            conn.close()
+        return send_anime_choice(message)
 
     current_time = int(time.time())
-    if user[5] <= 0 and current_time - user[4] < 10800:
-        mins = (10800 - (current_time - user[4])) // 60
-        return bot.send_message(message.chat.id, f"⌛ Kutish kerak: {mins} daqiqa.")
+    last_get = user[4]
+    chances = user[5]
 
+    # Vaqtni tekshirish (faqat imkoniyat 0 bo'lsa)
+    if chances <= 0:
+        if current_time - last_get < 10800:
+            mins = (10800 - (current_time - last_get)) // 60
+            return bot.send_message(message.chat.id, f"⌛ Hozircha imkoniyat yo'q. Yana {mins} daqiqa kuting yoki /craft qiling.")
+        else:
+            # Vaqt o'tgan bo'lsa, 1 ta imkoniyat beramiz
+            chances = 1
+
+    # Tasodifiy karta tanlash
     r = random.randint(1, 100)
     star = 5 if r <= 5 else 4 if r <= 15 else 3 if r <= 35 else 2 if r <= 65 else 1
     
-    anime_cards = [c for c in CARDS_DATA[user[1]] if c['star'] == star]
-    if not anime_cards: anime_cards = CARDS_DATA[user[1]]
+    selected_anime = user[1]
+    anime_cards = [c for c in CARDS_DATA[selected_anime] if c['star'] == star]
+    
+    if not anime_cards:
+        anime_cards = CARDS_DATA[selected_anime]
     
     card = random.choice(anime_cards)
+    
+    # Ma'lumotlarni yangilash
     conn = sqlite3.connect('game.db', check_same_thread=False)
     cursor = conn.cursor()
     
     new_items = user[3]
-    caption = f"✨ **YANGI KARTA!**\n\n👤 Ism: {card['name']}\n⭐ Daraja: {star}\n💎 Sizda bor: {new_items}"
+    caption = f"✨ **YANGI KARTA!**\n\n👤 Ism: {card['name']}\n⭐ Daraja: {star}\n💎 Predmetlar: {new_items}"
     
     if card['name'] in user[2]:
         p = star + 1
         new_items += p
-        caption += f"\n\n♻️ Dublikat! +{p} ta predmet berildi."
+        caption += f"\n\n♻️ Dublikat! Sizga +{p} 💎 berildi."
     
     new_cards = user[2] + f"{card['name']},"
-    new_chances = user[5] - 1 if user[5] > 0 else 0
+    new_chances = max(0, chances - 1)
     
     cursor.execute("UPDATE users SET cards=?, items=?, last_get=?, chances=? WHERE id=?", 
-                   (new_cards, new_items, current_time, new_chances, message.from_user.id))
+                   (new_cards, new_items, current_time, new_chances, user_id))
     conn.commit()
     conn.close()
 
@@ -173,7 +198,6 @@ def get_card(message):
         bot.send_photo(message.chat.id, card['img'], caption=caption, parse_mode="Markdown")
     except:
         bot.send_message(message.chat.id, caption)
-
 @bot.message_handler(func=lambda m: m.text == "🎒 Kartalarim")
 def my_cards(message):
     user = get_user(message.from_user.id)
