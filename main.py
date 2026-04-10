@@ -114,7 +114,8 @@ def start(message):
         conn.close()
         try:
             bot.send_message(ADMIN_ID, f"🆕 Yangi foydalanuvchi!\nIsm: {message.from_user.first_name}\nID: {message.from_user.id}")
-        except: pass
+        except:
+            pass
         send_anime_choice(message)
     else:
         if user[1] is None:
@@ -141,21 +142,26 @@ def set_anime(message):
 def get_card(message):
     user_id = message.from_user.id
     user = get_user(user_id)
-    if not user or user[1] is None: return send_anime_choice(message)
+    if not user or user[1] is None:
+        return send_anime_choice(message)
 
     current_time = int(time.time())
-    if user[5] <= 0:
-        if current_time - user[4] < 40:
-            vaqt = 40 - (current_time - user[4])
+    last_get = user[4]
+    chances = user[5]
+
+    if chances <= 0:
+        if current_time - last_get < 40:
+            vaqt = 40 - (current_time - last_get)
             return bot.send_message(message.chat.id, f"⌛ Yana {vaqt} sekund kuting.")
-        else: chances = 1
-    else: chances = user[5]
+        else:
+            chances = 1
 
     r = random.randint(1, 100)
     star = 5 if r <= 5 else 4 if r <= 15 else 3 if r <= 35 else 2 if r <= 65 else 1
     selected_anime = user[1]
     anime_cards = [c for c in CARDS_DATA[selected_anime] if c['star'] == star]
-    if not anime_cards: anime_cards = CARDS_DATA[selected_anime]
+    if not anime_cards:
+        anime_cards = CARDS_DATA[selected_anime]
     card = random.choice(anime_cards)
     
     conn = sqlite3.connect('game.db', check_same_thread=False)
@@ -175,36 +181,42 @@ def get_card(message):
                    (new_cards, new_items, current_time, new_chances, user_id))
     conn.commit()
     conn.close()
-    try: bot.send_photo(message.chat.id, card['img'], caption=caption, parse_mode="Markdown")
-    except: bot.send_message(message.chat.id, caption)
+    try:
+        bot.send_photo(message.chat.id, card['img'], caption=caption, parse_mode="Markdown")
+    except:
+        bot.send_message(message.chat.id, caption)
 
 @bot.message_handler(func=lambda m: m.text == "🎒 Kartalarim")
 def my_cards(message):
     user = get_user(message.from_user.id)
     if user and user[2]:
         bot.send_message(message.chat.id, f"Sizning kartalaringiz:\n{user[2].rstrip(',')}")
-    else: bot.send_message(message.chat.id, "Sizda hali karta yo'q.")
+    else:
+        bot.send_message(message.chat.id, "Sizda hali karta yo'q.")
 
 @bot.message_handler(func=lambda m: m.text == "🛠 Menyusi")
 def menu(message):
     user = get_user(message.from_user.id)
-    text = f"⚙️ **STATISTIKA**\n\n💎 Predmetlar: {user[3]}\n🎟 Imkoniyatlar: {user[5]}\n\n10 💎 evaziga 🎟 olish uchun /craft yozing."
-    bot.send_message(message.chat.id, text, parse_mode="Markdown")
+    if user:
+        text = f"⚙️ **STATISTIKA**\n\n💎 Predmetlar: {user[3]}\n🎟 Imkoniyatlar: {user[5]}\n\n10 💎 evaziga 🎟 olish uchun /craft yozing."
+        bot.send_message(message.chat.id, text, parse_mode="Markdown")
 
 @bot.message_handler(commands=['craft'])
 def craft(message):
     user = get_user(message.from_user.id)
-    if user[3] >= 10:
+    if user and user[3] >= 10:
         conn = sqlite3.connect('game.db', check_same_thread=False)
         cursor = conn.cursor()
         cursor.execute("UPDATE users SET items=items-10, chances=chances+1 WHERE id=?", (message.from_user.id,))
         conn.commit()
         conn.close()
         bot.send_message(message.chat.id, "✅ Tayyor! +1 imkoniyat.")
-    else: bot.send_message(message.chat.id, "❌ 💎 yetarli emas.")
+    else:
+        bot.send_message(message.chat.id, "❌ 💎 yetarli emas.")
 
 @bot.message_handler(func=lambda m: m.text == "🔄 Anime almashtirish")
-def change_anime(message): send_anime_choice(message)
+def change_anime(message):
+    send_anime_choice(message)
 
 @bot.message_handler(commands=['stat'])
 def admin_stat(message):
@@ -217,9 +229,15 @@ def admin_stat(message):
         bot.send_message(message.chat.id, f"📊 Jami foydalanuvchilar: {total}")
 
 @app.route('/')
-def home(): return "Bot Live"
-def run(): app.run(host='0.0.0.0', port=8080)
-def keep_alive(): Thread(target=run).start()
+def home():
+    return "Bot Live"
+
+def run():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
 
 if __name__ == "__main__":
     init_db()
