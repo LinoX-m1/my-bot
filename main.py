@@ -7,250 +7,274 @@ from threading import Thread
 
 # --- SOZLAMALAR ---
 TOKEN = "8770000703:AAEXRnIxr8iRBu_eUP9f3GPi8yBID6oTEmw"
-ADMIN_ID = 7818670765  # <--- @userinfobot bergan ID raqamingizni yozing# O'z tokeningizni qo'ying!
+ADMIN_ID = 7818670765
+
 bot = telebot.TeleBot(TOKEN)
-app = Flask('')
+app = Flask(__name__)
 
-# --- MA'LUMOTLAR BAZASI ---
+# --- DATABASE ---
 def init_db():
-    conn = sqlite3.connect('game.db', check_same_thread=False)
-    cursor = conn.cursor()
-    cursor.execute('''CREATE TABLE IF NOT EXISTS users 
-                      (id INTEGER PRIMARY KEY, anime TEXT, cards TEXT, items INTEGER, last_get INTEGER, chances INTEGER)''')
-    conn.commit()
-    conn.close()
-
-# --- MAXIMAL PERSONAJLAR RO'YXATI (60+) ---
-CARDS_DATA = {
-    "Naruto": [
-        {"name": "Naruto Uzumaki", "star": 1, "img": "https://i.pinimg.com/564x/01/23/45/naruto.jpg"},
-        {"name": "Sakura Haruno", "star": 1, "img": "https://i.pinimg.com/564x/01/23/45/sakura.jpg"},
-        {"name": "Hinata Hyuga", "star": 1, "img": "https://i.pinimg.com/564x/01/23/45/hinata.jpg"},
-        {"name": "Rock Lee", "star": 2, "img": "https://i.pinimg.com/564x/01/23/45/lee.jpg"},
-        {"name": "Shikamaru Nara", "star": 2, "img": "https://i.pinimg.com/564x/01/23/45/shika.jpg"},
-        {"name": "Neji Hyuga", "star": 2, "img": "https://i.pinimg.com/564x/01/23/45/neji.jpg"},
-        {"name": "Kakashi Hatake", "star": 3, "img": "https://i.pinimg.com/564x/01/23/45/kakashi.jpg"},
-        {"name": "Might Guy", "star": 3, "img": "https://i.pinimg.com/564x/01/23/45/guy.jpg"},
-        {"name": "Jiraiya", "star": 3, "img": "https://i.pinimg.com/564x/01/23/45/jiraiya.jpg"},
-        {"name": "Itachi Uchiha", "star": 4, "img": "https://i.pinimg.com/564x/01/23/45/itachi.jpg"},
-        {"name": "Minato Namikaze", "star": 4, "img": "https://i.pinimg.com/564x/01/23/45/minato.jpg"},
-        {"name": "Pain (Nagato)", "star": 4, "img": "https://i.pinimg.com/564x/01/23/45/pain.jpg"},
-        {"name": "Madara Uchiha", "star": 5, "img": "https://i.pinimg.com/564x/01/23/45/madara.jpg"},
-        {"name": "Kurama Mode Naruto", "star": 5, "img": "https://i.pinimg.com/564x/01/23/45/k_naruto.jpg"},
-        {"name": "Sasuke Rinnegan", "star": 5, "img": "https://i.pinimg.com/564x/01/23/45/s_rinne.jpg"}
-    ],
-    "One Piece": [
-        {"name": "Luffy", "star": 1, "img": "https://i.pinimg.com/564x/01/23/45/luffy.jpg"},
-        {"name": "Usopp", "star": 1, "img": "https://i.pinimg.com/564x/01/23/45/usopp.jpg"},
-        {"name": "Nami", "star": 1, "img": "https://i.pinimg.com/564x/01/23/45/nami.jpg"},
-        {"name": "Roronoa Zoro", "star": 2, "img": "https://i.pinimg.com/564x/01/23/45/zoro.jpg"},
-        {"name": "Sanji", "star": 2, "img": "https://i.pinimg.com/564x/01/23/45/sanji.jpg"},
-        {"name": "Tony Tony Chopper", "star": 2, "img": "https://i.pinimg.com/564x/01/23/45/chopper.jpg"},
-        {"name": "Brook", "star": 3, "img": "https://i.pinimg.com/564x/01/23/45/brook.jpg"},
-        {"name": "Nico Robin", "star": 3, "img": "https://i.pinimg.com/564x/01/23/45/robin.jpg"},
-        {"name": "Franky", "star": 3, "img": "https://i.pinimg.com/564x/01/23/45/franky.jpg"},
-        {"name": "Ace", "star": 4, "img": "https://i.pinimg.com/564x/01/23/45/ace.jpg"},
-        {"name": "Sabo", "star": 4, "img": "https://i.pinimg.com/564x/01/23/45/sabo.jpg"},
-        {"name": "Trafalgar Law", "star": 4, "img": "https://i.pinimg.com/564x/01/23/45/law.jpg"},
-        {"name": "Gear 5 Luffy", "star": 5, "img": "https://i.pinimg.com/564x/01/23/45/g5.jpg"},
-        {"name": "Shanks", "star": 5, "img": "https://i.pinimg.com/564x/01/23/45/shanks.jpg"},
-        {"name": "Whitebeard", "star": 5, "img": "https://i.pinimg.com/564x/01/23/45/wb.jpg"}
-    ],
-    "Attack on Titan": [
-        {"name": "Eren Yeager", "star": 1, "img": "https://i.pinimg.com/564x/01/23/45/eren.jpg"},
-        {"name": "Sasha", "star": 1, "img": "https://i.pinimg.com/564x/01/23/45/sasha.jpg"},
-        {"name": "Connie", "star": 1, "img": "https://i.pinimg.com/564x/01/23/45/connie.jpg"},
-        {"name": "Mikasa Ackerman", "star": 2, "img": "https://i.pinimg.com/564x/01/23/45/mikasa.jpg"},
-        {"name": "Armin Arlert", "star": 2, "img": "https://i.pinimg.com/564x/01/23/45/armin.jpg"},
-        {"name": "Jean", "star": 2, "img": "https://i.pinimg.com/564x/01/23/45/jean.jpg"},
-        {"name": "Levi Ackerman", "star": 3, "img": "https://i.pinimg.com/564x/01/23/45/levi.jpg"},
-        {"name": "Erwin Smith", "star": 3, "img": "https://i.pinimg.com/564x/01/23/45/erwin.jpg"},
-        {"name": "Hange Zoe", "star": 3, "img": "https://i.pinimg.com/564x/01/23/45/hange.jpg"},
-        {"name": "Reiner (Armored Titan)", "star": 4, "img": "https://i.pinimg.com/564x/01/23/45/reiner.jpg"},
-        {"name": "Bertholdt (Colossal)", "star": 4, "img": "https://i.pinimg.com/564x/01/23/45/berth.jpg"},
-        {"name": "Zeke (Beast Titan)", "star": 4, "img": "https://i.pinimg.com/564x/01/23/45/zeke.jpg"},
-        {"name": "Eren Founding Titan", "star": 5, "img": "https://i.pinimg.com/564x/01/23/45/eren5.jpg"},
-        {"name": "Ymir Fritz", "star": 5, "img": "https://i.pinimg.com/564x/01/23/45/ymir.jpg"}
-    ],
-    "Dragon Ball": [
-        {"name": "Goku", "star": 1, "img": "https://i.pinimg.com/564x/01/23/45/goku.jpg"},
-        {"name": "Krillin", "star": 1, "img": "https://i.pinimg.com/564x/01/23/45/krillin.jpg"},
-        {"name": "Yamcha", "star": 1, "img": "https://i.pinimg.com/564x/01/23/45/yamcha.jpg"},
-        {"name": "Vegeta", "star": 2, "img": "https://i.pinimg.com/564x/01/23/45/vegeta.jpg"},
-        {"name": "Gohan", "star": 2, "img": "https://i.pinimg.com/564x/01/23/45/gohan.jpg"},
-        {"name": "Piccolo", "star": 2, "img": "https://i.pinimg.com/564x/01/23/45/piccolo.jpg"},
-        {"name": "Future Trunks", "star": 3, "img": "https://i.pinimg.com/564x/01/23/45/trunks.jpg"},
-        {"name": "Frieza", "star": 3, "img": "https://i.pinimg.com/564x/01/23/45/frieza.jpg"},
-        {"name": "Cell", "star": 3, "img": "https://i.pinimg.com/564x/01/23/45/cell.jpg"},
-        {"name": "Goku Black", "star": 4, "img": "https://i.pinimg.com/564x/01/23/45/gblack.jpg"},
-        {"name": "Hit", "star": 4, "img": "https://i.pinimg.com/564x/01/23/45/hit.jpg"},
-        {"name": "Beerus", "star": 4, "img": "https://i.pinimg.com/564x/01/23/45/beerus.jpg"},
-        {"name": "UI Goku", "star": 5, "img": "https://i.pinimg.com/564x/01/23/45/uigoku.jpg"},
-        {"name": "Zeno", "star": 5, "img": "https://i.pinimg.com/564x/01/23/45/zeno.jpg"},
-        {"name": "Broly (Super)", "star": 5, "img": "https://i.pinimg.com/564x/01/23/45/broly.jpg"}
-    ]
-}
+    conn = sqlite3.connect('game.db', check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY,
+            anime TEXT,
+            cards TEXT,
+            items INTEGER,
+            last_get INTEGER,
+            chances INTEGER
+        )
+    ''')
+    conn.commit()
+    conn.close()
 
 def get_user(user_id):
-    conn = sqlite3.connect('game.db', check_same_thread=False)
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE id=?", (user_id,))
-    user = cursor.fetchone()
-    conn.close()
-    return user
+    conn = sqlite3.connect('game.db', check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE id=?", (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+    return user
 
-# --- TUGMALAR ---
-def main_markup():
-    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("🎴 Karta olish", "🎒 Kartalarim")
-    markup.add("🛠 Menyusi", "🔄 Anime almashtirish")
-    return markup
+# --- DATA (30+) ---
+CARDS_DATA = {
+    "Naruto": [
+        {"name":"Naruto","star":1,"img":"https://picsum.photos/200?1"},
+        {"name":"Sakura","star":1,"img":"https://picsum.photos/200?2"},
+        {"name":"Hinata","star":1,"img":"https://picsum.photos/200?3"},
+        {"name":"Kiba","star":1,"img":"https://picsum.photos/200?4"},
+        {"name":"Shino","star":1,"img":"https://picsum.photos/200?5"},
 
+        {"name":"Rock Lee","star":2,"img":"https://picsum.photos/200?6"},
+        {"name":"Neji","star":2,"img":"https://picsum.photos/200?7"},
+        {"name":"Shikamaru","star":2,"img":"https://picsum.photos/200?8"},
+        {"name":"Choji","star":2,"img":"https://picsum.photos/200?9"},
+        {"name":"Ino","star":2,"img":"https://picsum.photos/200?10"},
+
+        {"name":"Kakashi","star":3,"img":"https://picsum.photos/200?11"},
+        {"name":"Guy","star":3,"img":"https://picsum.photos/200?12"},
+        {"name":"Asuma","star":3,"img":"https://picsum.photos/200?13"},
+        {"name":"Kurenai","star":3,"img":"https://picsum.photos/200?14"},
+        {"name":"Yamato","star":3,"img":"https://picsum.photos/200?15"},
+
+        {"name":"Itachi","star":4,"img":"https://picsum.photos/200?16"},
+        {"name":"Pain","star":4,"img":"https://picsum.photos/200?17"},
+        {"name":"Konan","star":4,"img":"https://picsum.photos/200?18"},
+        {"name":"Deidara","star":4,"img":"https://picsum.photos/200?19"},
+        {"name":"Sasori","star":4,"img":"https://picsum.photos/200?20"},
+
+        {"name":"Madara","star":5,"img":"https://picsum.photos/200?21"},
+        {"name":"Hashirama","star":5,"img":"https://picsum.photos/200?22"},
+        {"name":"Minato","star":5,"img":"https://picsum.photos/200?23"},
+        {"name":"Obito","star":5,"img":"https://picsum.photos/200?24"},
+        {"name":"Six Naruto","star":5,"img":"https://picsum.photos/200?25"},
+
+        {"name":"Sasuke Rinnegan","star":5,"img":"https://picsum.photos/200?26"},
+        {"name":"Kaguya","star":5,"img":"https://picsum.photos/200?27"},
+        {"name":"Jiraiya","star":4,"img":"https://picsum.photos/200?28"},
+        {"name":"Tsunade","star":4,"img":"https://picsum.photos/200?29"},
+        {"name":"Orochimaru","star":4,"img":"https://picsum.photos/200?30"},
+    ],
+
+    "One Piece": [
+        {"name":"Luffy","star":1,"img":"https://picsum.photos/200?a1"},
+        {"name":"Usopp","star":1,"img":"https://picsum.photos/200?a2"},
+        {"name":"Nami","star":1,"img":"https://picsum.photos/200?a3"},
+        {"name":"Chopper","star":1,"img":"https://picsum.photos/200?a4"},
+        {"name":"Brook","star":1,"img":"https://picsum.photos/200?a5"},
+
+        {"name":"Zoro","star":2,"img":"https://picsum.photos/200?a6"},
+        {"name":"Sanji","star":2,"img":"https://picsum.photos/200?a7"},
+        {"name":"Robin","star":2,"img":"https://picsum.photos/200?a8"},
+        {"name":"Franky","star":2,"img":"https://picsum.photos/200?a9"},
+        {"name":"Jinbe","star":2,"img":"https://picsum.photos/200?a10"},
+
+        {"name":"Ace","star":3,"img":"https://picsum.photos/200?a11"},
+        {"name":"Sabo","star":3,"img":"https://picsum.photos/200?a12"},
+        {"name":"Law","star":3,"img":"https://picsum.photos/200?a13"},
+        {"name":"Kid","star":3,"img":"https://picsum.photos/200?a14"},
+        {"name":"Smoker","star":3,"img":"https://picsum.photos/200?a15"},
+
+        {"name":"Doflamingo","star":4,"img":"https://picsum.photos/200?a16"},
+        {"name":"Katakuri","star":4,"img":"https://picsum.photos/200?a17"},
+        {"name":"Big Mom","star":4,"img":"https://picsum.photos/200?a18"},
+        {"name":"Kaido","star":4,"img":"https://picsum.photos/200?a19"},
+        {"name":"Blackbeard","star":4,"img":"https://picsum.photos/200?a20"},
+
+        {"name":"Gear 5 Luffy","star":5,"img":"https://picsum.photos/200?a21"},
+        {"name":"Shanks","star":5,"img":"https://picsum.photos/200?a22"},
+        {"name":"Roger","star":5,"img":"https://picsum.photos/200?a23"},
+        {"name":"Whitebeard","star":5,"img":"https://picsum.photos/200?a24"},
+        {"name":"Rayleigh","star":5,"img":"https://picsum.photos/200?a25"},
+
+        {"name":"Garp","star":4,"img":"https://picsum.photos/200?a26"},
+        {"name":"Fujitora","star":4,"img":"https://picsum.photos/200?a27"},
+        {"name":"Kizaru","star":4,"img":"https://picsum.photos/200?a28"},
+        {"name":"Aokiji","star":4,"img":"https://picsum.photos/200?a29"},
+        {"name":"Enel","star":4,"img":"https://picsum.photos/200?a30"},
+    ],
+  
+    "Dragon Ball": [
+    {"name":"Goku","star":1,"img":"https://picsum.photos/200?db1"},
+    {"name":"Krillin","star":1,"img":"https://picsum.photos/200?db2"},
+    {"name":"Yamcha","star":1,"img":"https://picsum.photos/200?db3"},
+    {"name":"Tien","star":1,"img":"https://picsum.photos/200?db4"},
+
+    {"name":"Vegeta","star":2,"img":"https://picsum.photos/200?db5"},
+    {"name":"Gohan","star":2,"img":"https://picsum.photos/200?db6"},
+    {"name":"Piccolo","star":2,"img":"https://picsum.photos/200?db7"},
+    {"name":"Trunks","star":2,"img":"https://picsum.photos/200?db8"},
+
+    {"name":"Frieza","star":3,"img":"https://picsum.photos/200?db9"},
+    {"name":"Cell","star":3,"img":"https://picsum.photos/200?db10"},
+    {"name":"Majin Buu","star":3,"img":"https://picsum.photos/200?db11"},
+    {"name":"Android 17","star":3,"img":"https://picsum.photos/200?db12"},
+
+    {"name":"Beerus","star":4,"img":"https://picsum.photos/200?db13"},
+    {"name":"Whis","star":4,"img":"https://picsum.photos/200?db14"},
+    {"name":"Hit","star":4,"img":"https://picsum.photos/200?db15"},
+    {"name":"Goku Black","star":4,"img":"https://picsum.photos/200?db16"},
+
+    {"name":"UI Goku","star":5,"img":"https://picsum.photos/200?db17"},
+    {"name":"Jiren","star":5,"img":"https://picsum.photos/200?db18"},
+    {"name":"Zeno","star":5,"img":"https://picsum.photos/200?db19"},
+    {"name":"Broly","star":5,"img":"https://picsum.photos/200?db20"},
+],
+
+  "Attack on Titan": [
+    {"name":"Eren","star":1,"img":"https://picsum.photos/200?aot1"},
+    {"name":"Armin","star":1,"img":"https://picsum.photos/200?aot2"},
+    {"name":"Sasha","star":1,"img":"https://picsum.photos/200?aot3"},
+    {"name":"Connie","star":1,"img":"https://picsum.photos/200?aot4"},
+
+    {"name":"Mikasa","star":2,"img":"https://picsum.photos/200?aot5"},
+    {"name":"Jean","star":2,"img":"https://picsum.photos/200?aot6"},
+    {"name":"Historia","star":2,"img":"https://picsum.photos/200?aot7"},
+    {"name":"Reiner","star":2,"img":"https://picsum.photos/200?aot8"},
+
+    {"name":"Bertholdt","star":3,"img":"https://picsum.photos/200?aot9"},
+    {"name":"Annie","star":3,"img":"https://picsum.photos/200?aot10"},
+    {"name":"Ymir","star":3,"img":"https://picsum.photos/200?aot11"},
+    {"name":"Hange","star":3,"img":"https://picsum.photos/200?aot12"},
+
+    {"name":"Levi","star":4,"img":"https://picsum.photos/200?aot13"},
+    {"name":"Erwin","star":4,"img":"https://picsum.photos/200?aot14"},
+    {"name":"Zeke","star":4,"img":"https://picsum.photos/200?aot15"},
+    {"name":"Pieck","star":4,"img":"https://picsum.photos/200?aot16"},
+
+    {"name":"Eren Titan","star":5,"img":"https://picsum.photos/200?aot17"},
+    {"name":"Founder Eren","star":5,"img":"https://picsum.photos/200?aot18"},
+    {"name":"Warhammer Titan","star":5,"img":"https://picsum.photos/200?aot19"},
+    {"name":"Colossal Titan","star":5,"img":"https://picsum.photos/200?aot20"},
+]
+}
+
+# --- MENU ---
+def menu():
+    m = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
+    m.add("🎴 Karta olish", "🎒 Kartalarim")
+    m.add("🛠 Menu", "🔄 Anime almashtirish")
+    return m
+
+# --- START ---
 @bot.message_handler(commands=['start'])
-def start(message):
-    user = get_user(message.from_user.id)
-    if not user:
-        # Yangi foydalanuvchini bazaga qo'shish
-        conn = sqlite3.connect('game.db', check_same_thread=False)
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)", (message.from_user.id, None, "", 0, 0, 10))
-        conn.commit()
-        conn.close()
-        
-        # SIZGA XABAR YUBORISH QISMI
-        try:
-            bot.send_message(ADMIN_ID, f"🆕 Yangi foydalanuvchi!\nIsm: {message.from_user.first_name}\nID: {message.from_user.id}")
-        except:
-            pass # Agar siz hali botga start bosmagan bo'lsangiz xato bermasligi uchun
-            
-        send_anime_choice(message)
-    if not user:
-        # ... (bazaga qo'shish kodlari)
-        
-        try:
-            bot.send_message(ADMIN_ID, f"🆕 Yangi foydalanuvchi!\nIsm: {message.from_user.first_name}\nID: {message.from_user.id}")
-        except:
-            pass
+def start(msg):
+    user = get_user(msg.from_user.id)
 
-        send_anime_choice(message)
-    else:
-        # Agar foydalanuvchi bazada bo'lsa, shunchaki xush kelibsiz deymiz
-        bot.send_message(message.chat.id, "Xush kelibsiz!", reply_markup=main_markup())
-        bot.send_message(message.chat.id, "Bosh menyu:", reply_markup=main_markup())
+    if not user:
+        conn = sqlite3.connect('game.db')
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)",
+                       (msg.from_user.id, None, "", 0, 0, 5))
+        conn.commit()
+        conn.close()
 
-def send_anime_choice(message):
-    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    for anime in CARDS_DATA.keys():
-        markup.add(anime)
-    bot.send_message(message.chat.id, "Anime tanlang:", reply_markup=markup)
+        # 🔥 SENGA XABAR
+        bot.send_message(
+            ADMIN_ID,
+            f"🆕 USER!\nID: {msg.from_user.id}\nUsername: @{msg.from_user.username}"
+        )
 
-@bot.message_handler(func=lambda m: m.text in CARDS_DATA.keys())
-def set_anime(message):
-    conn = sqlite3.connect('game.db', check_same_thread=False)
-    cursor = conn.cursor()
-    cursor.execute("UPDATE users SET anime=? WHERE id=?", (message.text, message.from_user.id))
-    conn.commit()
-    conn.close()
-    bot.send_message(message.chat.id, f"Siz {message.text} ni tanladingiz!", reply_markup=main_markup())
+        return choose_anime(msg)
 
+    bot.send_message(msg.chat.id, "Xush kelibsiz!", reply_markup=menu())
+
+# --- ANIME ---
+def choose_anime(msg):
+    m = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
+    for a in CARDS_DATA:
+        m.add(a)
+    bot.send_message(msg.chat.id, "Anime tanla:", reply_markup=m)
+
+@bot.message_handler(func=lambda m: m.text in CARDS_DATA)
+def set_anime(msg):
+    conn = sqlite3.connect('game.db')
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET anime=? WHERE id=?", (msg.text, msg.from_user.id))
+    conn.commit()
+    conn.close()
+    bot.send_message(msg.chat.id, "Tanlandi!", reply_markup=menu())
+
+# --- CARD ---
 @bot.message_handler(func=lambda m: m.text == "🎴 Karta olish")
-def get_card(message):
-    user_id = message.from_user.id
-    user = get_user(user_id)
-    
-    # Foydalanuvchi bazada bo'lmasa yoki anime tanlamagan bo'lsa
-    if not user or user[1] is None:
-        # Agar bazada umuman bo'lmasa, yangi ochamiz
-        if not user:
-            conn = sqlite3.connect('game.db', check_same_thread=False)
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)", (user_id, None, "", 0, 0, 10))
-            conn.commit()
-            conn.close()
-        return send_anime_choice(message)
+def get_card(msg):
+    user = get_user(msg.from_user.id)
 
-    current_time = int(time.time())
-    last_get = user[4]
-    chances = user[5]
+    if not user or user[1] is None:
+        return choose_anime(msg)
 
-    # Vaqtni tekshirish (faqat imkoniyat 0 bo'lsa)
-   if chances <= 0:
-        if current_time - last_get < 40:
-            vaqt = 40 - (current_time - last_get)
-            return bot.send_message(message.chat.id, f"⌛ Hozircha imkoniyat yo'q. Yana {vaqt} sekund kuting yoki /craft qiling.")
-        else:
-            chances = 1
+    if user[5] <= 0:
+        return bot.send_message(msg.chat.id, "Chance yo'q!")
 
-    # Tasodifiy karta tanlash
-    r = random.randint(1, 100)
-    star = 5 if r <= 5 else 4 if r <= 15 else 3 if r <= 35 else 2 if r <= 65 else 1
-    
-    selected_anime = user[1]
-    anime_cards = [c for c in CARDS_DATA[selected_anime] if c['star'] == star]
-    
-    if not anime_cards:
-        anime_cards = CARDS_DATA[selected_anime]
-    
-    card = random.choice(anime_cards)
-    
-    # Ma'lumotlarni yangilash
-    conn = sqlite3.connect('game.db', check_same_thread=False)
-    cursor = conn.cursor()
-    
-    new_items = user[3]
-    caption = f"✨ **YANGI KARTA!**\n\n👤 Ism: {card['name']}\n⭐ Daraja: {star}\n💎 Predmetlar: {new_items}"
-    
-    if card['name'] in user[2]:
-        p = star + 1
-        new_items += p
-        caption += f"\n\n♻️ Dublikat! Sizga +{p} 💎 berildi."
-    
-    new_cards = user[2] + f"{card['name']},"
-    new_chances = max(0, chances - 1)
-    
-    cursor.execute("UPDATE users SET cards=?, items=?, last_get=?, chances=? WHERE id=?", 
-                   (new_cards, new_items, current_time, new_chances, user_id))
-    conn.commit()
-    conn.close()
+    star = random.randint(1,5)
+    cards = [c for c in CARDS_DATA[user[1]] if c['star']==star]
+    if not cards:
+        cards = CARDS_DATA[user[1]]
 
-    try:
-        bot.send_photo(message.chat.id, card['img'], caption=caption, parse_mode="Markdown")
-    except:
-        bot.send_message(message.chat.id, caption)
+    card = random.choice(cards)
+
+    cards_list = user[2].split(',') if user[2] else []
+    items = user[3]
+
+    if card['name'] in cards_list:
+        items += star
+
+    cards_list.append(card['name'])
+
+    conn = sqlite3.connect('game.db')
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET cards=?, items=?, chances=chances-1 WHERE id=?",
+                   (",".join(cards_list), items, msg.from_user.id))
+    conn.commit()
+    conn.close()
+
+    caption = f"🎉 {card['name']} ({star}⭐)\n💎 {items}"
+
+    bot.send_photo(msg.chat.id, card['img'], caption=caption)
+
+# --- MY CARDS ---
 @bot.message_handler(func=lambda m: m.text == "🎒 Kartalarim")
-def my_cards(message):
-    user = get_user(message.from_user.id)
-    if user and user[2]:
-        bot.send_message(message.chat.id, f"Sizning kartalaringiz:\n{user[2].rstrip(',')}")
-    else: bot.send_message(message.chat.id, "Sizda hali karta yo'q.")
+def my_cards(msg):
+    user = get_user(msg.from_user.id)
+    if user and user[2]:
+        bot.send_message(msg.chat.id, user[2])
+    else:
+        bot.send_message(msg.chat.id, "Bo'sh")
 
-@bot.message_handler(func=lambda m: m.text == "🛠 Menyusi")
-def menu(message):
-    user = get_user(message.from_user.id)
-    text = f"⚙️ **STATISTIKA**\n\n💎 Predmetlar: {user[3]}\n🎟 Imkoniyatlar: {user[5]}\n\n10 💎 evaziga 🎟 olish uchun /craft deb yozing."
-    bot.send_message(message.chat.id, text, parse_mode="Markdown")
-
-@bot.message_handler(commands=['craft'])
-def craft(message):
-    user = get_user(message.from_user.id)
-    if user[3] >= 10:
-        conn = sqlite3.connect('game.db', check_same_thread=False)
-        cursor = conn.cursor()
-        cursor.execute("UPDATE users SET items=items-10, chances=chances+1 WHERE id=?", (message.from_user.id,))
-        conn.commit()
-        conn.close()
-        bot.send_message(message.chat.id, "✅ Tayyor! 1 ta imkoniyat qo'shildi.")
-    else: bot.send_message(message.chat.id, "❌ Predmet yetarli emas.")
-
-@bot.message_handler(func=lambda m: m.text == "🔄 Anime almashtirish")
-def change_anime(message): send_anime_choice(message)
-
+# --- SERVER ---
 @app.route('/')
-def home(): return "Bot Live"
-def run(): app.run(host='0.0.0.0', port=8080)
-def keep_alive(): Thread(target=run).start()
+def home():
+    return "Bot ishlayapti"
 
+def run():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    Thread(target=run).start()
+
+# --- RUN ---
 if __name__ == "__main__":
-    init_db()
-    keep_alive()
-    bot.infinity_polling()
+    init_db()
+    keep_alive()
+    bot.infinity_polling()
