@@ -1,8 +1,11 @@
 import telebot
 import random
 import sqlite3
+import os
+from dotenv import load_dotenv
 
-TOKEN = "8770000703:AAEXRnIxr8iRBu_eUP9f3GPi8yBID6oTEmw"
+load_dotenv()
+TOKEN = os.getenv("8770000703:AAEXRnIxr8iRBu_eUP9f3GPi8yBID6oTEmw")
 bot = telebot.TeleBot(TOKEN)
 
 # --- DATABASE ---
@@ -33,6 +36,14 @@ def create_user(user_id):
     cur = conn.cursor()
     cur.execute("INSERT INTO users VALUES (?, ?, ?, ?)",
                 (user_id, "", 0, 5))
+    conn.commit()
+    conn.close()
+
+def update_user(user_id, cards, items, chances):
+    conn = sqlite3.connect("game.db")
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET cards=?, items=?, chances=? WHERE id=?",
+                (cards, items, chances, user_id))
     conn.commit()
     conn.close()
 
@@ -141,19 +152,16 @@ def get_card(msg):
 
     if card[0] in cards_list:
         items += star
+    else:
+        cards_list.append(card[0])
 
-    cards_list.append(card[0])
-
-    conn = sqlite3.connect("game.db")
-    cur = conn.cursor()
-    cur.execute("UPDATE users SET cards=?, items=?, chances=chances-1 WHERE id=?",
-                (",".join(cards_list), items, msg.from_user.id))
-    conn.commit()
-    conn.close()
+    # Update database with new chances value
+    new_chances = user[3] - 1
+    update_user(msg.from_user.id, ",".join(cards_list), items, new_chances)
 
     bot.send_message(
         msg.chat.id,
-        f"🎉 {card[0]} ({star}⭐)\n💎 {items}\n🎯 Qolgan chance: {user[3]-1}"
+        f"🎉 {card[0]} ({star}⭐)\n💎 {items}\n🎯 Qolgan chance: {new_chances}"
     )
 
 # --- KARTALARIM ---
