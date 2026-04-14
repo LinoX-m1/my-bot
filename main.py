@@ -3,9 +3,10 @@ import random
 import sqlite3
 import os
 from dotenv import load_dotenv
+from datetime import datetime
 
 load_dotenv()
-TOKEN = os.getenv("8770000703:AAEXRnIxr8iRBu_eUP9f3GPi8yBID6oTEmw")
+TOKEN = os.getenv("TOKEN")
 bot = telebot.TeleBot(TOKEN)
 
 # --- DATABASE ---
@@ -15,9 +16,21 @@ def init_db():
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users(
             id INTEGER PRIMARY KEY,
+            username TEXT,
             cards TEXT,
             items INTEGER,
             chances INTEGER
+        )
+    """)
+    
+    # Activity log table
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS activity_log(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            username TEXT,
+            action TEXT,
+            timestamp TEXT
         )
     """)
     conn.commit()
@@ -31,11 +44,11 @@ def get_user(user_id):
     conn.close()
     return user
 
-def create_user(user_id):
+def create_user(user_id, username):
     conn = sqlite3.connect("game.db")
     cur = conn.cursor()
-    cur.execute("INSERT INTO users VALUES (?, ?, ?, ?)",
-                (user_id, "", 0, 5))
+    cur.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?)",
+                (user_id, username, "", 0, 5))
     conn.commit()
     conn.close()
 
@@ -46,6 +59,20 @@ def update_user(user_id, cards, items, chances):
                 (cards, items, chances, user_id))
     conn.commit()
     conn.close()
+
+# --- ACTIVITY LOG ---
+def log_activity(user_id, username, action):
+    """Foydalanuvchi faoliyatini qayd qilish"""
+    try:
+        conn = sqlite3.connect("game.db")
+        cur = conn.cursor()
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cur.execute("INSERT INTO activity_log (user_id, username, action, timestamp) VALUES (?, ?, ?, ?)",
+                    (user_id, username, action, timestamp))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Log xatosi: {e}")
 
 # --- 45 TA DEMON SLAYER ---
 CARDS = [
@@ -123,64 +150,112 @@ def get_star():
 def menu():
     markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("🎴 Karta olish", "🎒 Kartalarim")
+    markup.add("📊 Mening ma'lumotlarim")
     return markup
 
 # --- START ---
 @bot.message_handler(commands=['start'])
 def start(msg):
-    if not get_user(msg.from_user.id):
-        create_user(msg.from_user.id)
-
-    bot.send_message(msg.chat.id, "Xush kelibsiz!", reply_markup=menu())
+    try:
+        user_id = msg.from_user.id
+        username = msg.from_user.username or "no_username"
+        
+        if not get_user(user_id):
+            create_user(user_id, username)
+            log_activity(user_id, username, "Botni ishga tushirdi (START)")
+        
+        bot.send_message(msg.chat.id, f"Xush kelibsiz, @{username}!", reply_markup=menu())
+    except Exception as e:
+        print(f"Start xatosi: {e}")
+        bot.send_message(msg.chat.id, "❌ Xatolik yuz berdi!")
 
 # --- KARTA OLISH ---
 @bot.message_handler(func=lambda m: m.text == "🎴 Karta olish")
 def get_card(msg):
-    user = get_user(msg.from_user.id)
+    try:
+        user_id = msg.from_user.id
+        username = msg.from_user.username or "no_username"
+        user = get_user(user_id)
 
-    if user[3] <= 0:
-        bot.send_message(msg.chat.id, "❌ Chance tugadi!")
-        return
+        if user[4] <= 0:
+            bot.send_message(msg.chat.id, "❌ Chance tugadi!")
+            return
 
-    star = get_star()
-    possible = [c for c in CARDS if c[1] == star]
+        star = get_star()
+        possible = [c for c in CARDS if c[1] == star]
+        card = random.choice(possible)
 
-    card = random.choice(possible)
+        cards_list = user[2].split(",") if user[2] else []
+        items = user[3]
 
-    cards_list = user[1].split(",") if user[1] else []
-    items = user[2]
+        if card[0] in cards_list:
+            items += star
+        else:
+            cards_list.append(card[0])
 
-    if card[0] in cards_list:
-        items += star
-    else:
-        cards_list.append(card[0])
+        new_chances = user[4] - 1
+        update_user(user_id, ",".join(cards_list), items, new_chances)
+        
+        # Activity log
+        log_activity(user_id, username, f"Karta oldi: {card[0]} ({star}⭐)")
 
-    # Update database with new chances value
-    new_chances = user[3] - 1
-    update_user(msg.from_user.id, ",".join(cards_list), items, new_chances)
-
-    bot.send_message(
-        msg.chat.id,
-        f"🎉 {card[0]} ({star}⭐)\n💎 {items}\n🎯 Qolgan chance: {new_chances}"
-    )
+        bot.send_message(
+            msg.chat.id,
+            f"🎉 {card[0]} ({star}⭐)\n💎 {items}\n🎯 Qolgan chance: {new_chances}"
+        )
+    except Exception as e:
+        print(f"Karta olish xatosi: {e}")
+        bot.send_message(msg.chat.id, "❌ Xatolik yuz berdi!")
 
 # --- KARTALARIM ---
 @bot.message_handler(func=lambda m: m.text == "🎒 Kartalarim")
 def my_cards(msg):
-    user = get_user(msg.from_user.id)
+    try:
+        user_id = msg.from_user.id
+        username = msg.from_user.username or "no_username"
+        user = get_user(user_id)
 
-    if user[1]:
-        cards = user[1].split(",")
+        if user[2]:
+            cards = user[2].split(",")
+            text = "🎒 Sening kartalaring:\n\n"
+            for c in cards:
+                text += f"• {c}\n"
+            
+            text += f"\n💎 Jami itemlar: {user[3]}"
+            bot.send_message(msg.chat.id, text)
+        else:
+            bot.send_message(msg.chat.id, "Bo'sh 📭")
+        
+        log_activity(user_id, username, "Kartalarni ko'rdi")
+    except Exception as e:
+        print(f"Kartalarim xatosi: {e}")
+        bot.send_message(msg.chat.id, "❌ Xatolik yuz berdi!")
 
-        text = "🎒 Sening kartalaring:\n\n"
-        for c in cards:
-            text += f"• {c}\n"
-
-        bot.send_message(msg.chat.id, text)
-    else:
-        bot.send_message(msg.chat.id, "Bo'sh")
+# --- MENING MA'LUMOTLARIM ---
+@bot.message_handler(func=lambda m: m.text == "📊 Mening ma'lumotlarim")
+def my_info(msg):
+    try:
+        user_id = msg.from_user.id
+        username = msg.from_user.username or "no_username"
+        user = get_user(user_id)
+        
+        text = f"""
+👤 **Ma'lumotlaringiz:**
+🆔 User ID: `{user_id}`
+📝 Username: @{username}
+🎴 Kartalar soni: {len(user[2].split(',')) if user[2] else 0}
+💎 Jami itemlar: {user[3]}
+🎯 Qolgan chance: {user[4]}
+        """
+        
+        bot.send_message(msg.chat.id, text, parse_mode="Markdown")
+        log_activity(user_id, username, "Ma'lumotlarini ko'rdi")
+    except Exception as e:
+        print(f"Ma'lumot xatosi: {e}")
+        bot.send_message(msg.chat.id, "❌ Xatolik yuz berdi!")
 
 # --- RUN ---
 if __name__ == "__main__":
     init_db()
+    print("Bot ishga tushdi... ✅")
     bot.infinity_polling()
