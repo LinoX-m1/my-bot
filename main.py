@@ -4,7 +4,7 @@ import sqlite3
 from flask import Flask
 from threading import Thread
 
-TOKEN = "TOKENINGNI_BU_YERGA_QO'Y"
+TOKEN = "8770000703:AAEXRnIxr8iRBu_eUP9f3GPi8yBID6oTEmw"
 ADMIN_ID = 123456789
 
 bot = telebot.TeleBot(TOKEN)
