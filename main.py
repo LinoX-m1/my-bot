@@ -1,43 +1,48 @@
+TOKEN = "8928147933:AAF2A4YVxQLOnJM6fxzg46oPsIhFnmWm53g"
+ADMIN_ID = 7818670765
 import os
-from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder,
-    MessageHandler,
-    ContextTypes,
-    filters,
-)
-from dotenv import load_dotenv
-from downloader import download_video
+import logging
+from aiogram import Bot, Dispatcher, types
+from aiogram.utils import executor
+from moviepy.editor import VideoFileClip
 
-load_dotenv()
+# 🔥 TOKEN shu yerga qo‘yiladi
+TOKEN = "123456:ABCDEF_YOUR_BOT_TOKEN"
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+bot = Bot(token=TOKEN)
+dp = Dispatcher(bot)
 
-
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    url = update.message.text
-
-    await update.message.reply_text("⏳ Yuklanmoqda...")
-
-    try:
-        file_path = download_video(url)
-
-        await update.message.reply_video(
-            video=open(file_path, "rb")
-        )
-
-        os.remove(file_path)
-
-    except Exception as e:
-        await update.message.reply_text(f"Xato: {e}")
+logging.basicConfig(level=logging.INFO)
 
 
-app = ApplicationBuilder().token(BOT_TOKEN).build()
+def extract_audio(video_path, audio_path):
+    video = VideoFileClip(video_path)
+    video.audio.write_audiofile(audio_path)
+    video.close()
 
-app.add_handler(
-    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message)
-)
 
-print("Bot ishladi...")
+@dp.message_handler(content_types=['video'])
+async def handle_video(message: types.Message):
+    user = message.from_user
 
-app.run_polling()
+    logging.info(f"User: {user.id} @{user.username}")
+
+    file = await bot.get_file(message.video.file_id)
+
+    video_path = f"video_{user.id}.mp4"
+    audio_path = f"audio_{user.id}.mp3"
+
+    await bot.download_file(file.file_path, video_path)
+
+    await message.reply("Video qabul qilindi...")
+
+    extract_audio(video_path, audio_path)
+
+    await message.reply_audio(types.InputFile(audio_path), caption=f"User ID: {user.id}")
+
+    os.remove(video_path)
+    os.remove(audio_path)
+
+
+if __name__ == "__main__":
+    executor.start_polling(dp, skip_updates=True)
