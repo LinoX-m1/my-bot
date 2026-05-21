@@ -1,13 +1,12 @@
-TOKEN = "8928147933:AAF2A4YVxQLOnJM6fxzg46oPsIhFnmWm53g"
-ADMIN_ID = 7818670765
 import os
 import logging
 from aiogram import Bot, Dispatcher, types
 from aiogram.utils import executor
 from moviepy.editor import VideoFileClip
 
-# 🔥 TOKEN shu yerga qo‘yiladi
-TOKEN = "123456:ABCDEF_YOUR_BOT_TOKEN"
+# 🔥 Faqat bitta TOKEN bo‘ladi
+TOKEN = "8928147933:AAF2A4YVxQLOnJM6fxzg46oPsIhFnmWm53g"
+ADMIN_ID = 7818670765
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
