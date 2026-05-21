@@ -11,7 +11,7 @@ from downloader import download_video
 
 load_dotenv()
 
-BOT_TOKEN = os.getenv("8928147933:AAF2A4YVxQLOnJM6fxzg46oPsIhFnmWm53g")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
